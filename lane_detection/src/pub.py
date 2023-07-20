@@ -1,10 +1,9 @@
 #!/usr/bin/env python
-#-*- coding:utf-8 -*-
-
 import os
 import rospy
 import cv2
 import numpy as np
+from std_msgs.msg import Int32
 from sensor_msgs.msg import CompressedImage
 from lane_detection.msg import detected_msg
 from cv_bridge import CvBridge
@@ -12,10 +11,10 @@ from cv_bridge import CvBridge
 cv2.namedWindow("W", cv2.WINDOW_NORMAL)
 cv2.createTrackbar("Hl", "W", 0, 255, lambda x:x)
 cv2.createTrackbar("Sl", "W", 0, 255, lambda x:x)
-cv2.createTrackbar("Vl", "W", 180, 255, lambda x:x)
-cv2.createTrackbar("Hh", "W", 180, 255, lambda x:x)
-cv2.createTrackbar("Sh", "W", 255, 255, lambda x:x)
-cv2.createTrackbar("Vh", "W", 255, 255, lambda x:x)
+cv2.createTrackbar("Vl", "W", 224, 255, lambda x:x) #135
+cv2.createTrackbar("Hh", "W", 255, 255, lambda x:x)
+cv2.createTrackbar("Sh", "W", 22, 255, lambda x:x)
+cv2.createTrackbar("Vh", "W", 250, 255, lambda x:x)
 
 cv2.namedWindow("Y", cv2.WINDOW_NORMAL)
 cv2.createTrackbar("Hl", "Y", 20, 255, lambda x:x)
@@ -31,8 +30,11 @@ Height = 480
 warp_img_w = 320
 warp_img_h = 240
 
-warpx_margin = 160
-warpy_margin = 50
+# warpx_margin = 160
+# warpy_margin = 50
+
+warpx_margin = 230
+warpy_margin = 70
 
 nwindows = 20
 margin = 20
@@ -65,25 +67,32 @@ if calibrated:
     cal_mtx, cal_roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (Width, Height), 1, (Width, Height))
 
 class CameraReceiver():
+    state = -1
     def __init__(self):
         rospy.loginfo("Camera Receiver Object is Created")
-        rospy.Subscriber("/usb_cam/image_color/compressed", CompressedImage, self.Callback)
+        rospy.Subscriber("/usb_cam/image_rect_color/compressed", CompressedImage, self.Callback)
+        rospy.Subscriber("/whatLane", Int32, self.state_Callback)
         self.pub = rospy.Publisher("/lane_pub", detected_msg, queue_size = 10)
+
+    def state_Callback(self, msg):
+        self.state = msg.data
+        print("1차로" if (self.state==-1) else "2차로")
 
     def Callback(self, data):
         global Width, Height, cap
 
         bridge=CvBridge()
-        image=bridge.compressed_imgmsg_to_cv2(data,desired_encoding='8UC3')
+        image=bridge.compressed_imgmsg_to_cv2(data,"bgr8")
 
+        state = self.state
         warp_img, M, Minv = warp_image(image, warp_src, warp_dist, (warp_img_w, warp_img_h))
-        left_fit, right_fit, avex, avey, leftx_current, lefty, rightx_current, righty = warp_process_image(warp_img)
+        left_fit, right_fit, avex, avey, leftx_current, lefty, rightx_current, righty = warp_process_image(state, warp_img)
         lane_img = draw_lane(image, warp_img, Minv, left_fit, right_fit, avex, avey, leftx_current, lefty, rightx_current, righty)
         msg = detected_msg()
         msg.xdetected = avex
         msg.ydetected = avey
         self.pub.publish(msg)
-        
+
         cv2.imshow("warp", warp_img)
         cv2.imshow("lane", lane_img)
 
@@ -107,7 +116,7 @@ def warp_image(img, src, dst, size):
 
     return warp_img, M, Minv
 
-def warp_process_image(img):
+def warp_process_image(state, img):
     global nwindows 
     global margin 
     global minpix 
@@ -183,12 +192,18 @@ def warp_process_image(img):
         right_lane_inds.append(good_right_inds)
         lefty = 0
 
-        if len(good_left_inds) > minpix: 
+        if len(good_left_inds) > minpix and state == -1:# 왼쪽 주행 중
             leftx_current = np.int(np.mean(nz[1][good_left_inds])) 
             lefty = np.int(np.mean(nz[0][good_left_inds])) 
-        if len(good_right_inds) > minpix: 
+            rightx_current = leftx_current + 90
+            righty = lefty
+
+        if len(good_right_inds) > minpix and state == 1: # 오른쪽 주행 중 
             rightx_current = np.int(np.mean(nz[1][good_right_inds])) 
-            righty = np.int(np.mean(nz[0][good_right_inds])) 
+            righty = np.int(np.mean(nz[0][good_right_inds]))
+            leftx_current = rightx_current - 80 
+            lefty = righty
+
 
         lx.append(leftx_current) 
         ly.append((win_yl + win_yh)/2)
@@ -201,24 +216,24 @@ def warp_process_image(img):
     
     lfit = np.polyfit(np.array(ly),np.array(lx),2) 
     rfit = np.polyfit(np.array(ry),np.array(rx),2)
-
+    
     out_img[nz[0][left_lane_inds], nz[1][left_lane_inds]] = [255, 0, 0] 
     out_img[nz[0][right_lane_inds] , nz[1][right_lane_inds]] = [0, 0, 255]
 
-    if leftx_current == 0 and lefty == 0:
-        leftx_current = rightx_current - 110
-        lefty = righty
+    # if leftx_current == 0 and lefty == 0:
+    #     leftx_current = rightx_current - 110
+    #     lefty = righty
 
-    elif rightx_current == 0 and righty == 0:
-        rightx_current = leftx_current + 110
-        righty = lefty
+    # elif rightx_current == 0 and righty == 0:
+    #     rightx_current = leftx_current + 110
+    #     righty = lefty
 
-    # else:
-    #     leftx_current = 
-    #     rightx_current = 
-    #     lefty =
-    #     righty =
+    # if state == 0:# 왼쪽 주행 중
+    #     rightx_current = leftx_current + 80
     
+    # elif state == 1: # 오른쪽 주행 중
+    #     leftx_current = rightx_current - 80
+
     avex = (leftx_current + rightx_current)//2
     avey = (lefty + righty)//2
 
@@ -252,7 +267,6 @@ def draw_lane(image, warp_img, Minv, left_fit, right_fit, avex, avey, leftx_curr
 
 def run():
     rospy.init_node("ld_pub")
-    rospy.loginfo(cv2.__version__)
     #rate = rospy.Rate(1)
     cam = CameraReceiver()
     rospy.spin()
