@@ -38,7 +38,7 @@ class rpScanfReceiver:
         for i, range in enumerate(data.ranges):
             x, y = calc_axis_xy(min_angle + angle_increment * i, range, min_range, max_range)
             if is_data(x, y):
-                PC_data.points.append(Point32(x, y, 1))
+                PC_data.points.append(Point32(x, y, 0))
         self.pc_pub.publish(PC_data)
     
     def lidar_callback(self, data):
@@ -66,7 +66,7 @@ def is_data(_x, _y):
 
     if (_x, _y) == (0, 0):
         return False
-    if  calc_distance(origin, (_x, _y)) <= 2 and (-100 <= calc_angle(origin, (_x, _y)) <= 100):
+    if  calc_distance(origin, (_x, _y)) <= 2 and -100 <= calc_angle(origin, (_x, _y)) <= 100:
         return True
 
     return False
