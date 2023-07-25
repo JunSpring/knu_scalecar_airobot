@@ -21,7 +21,7 @@ class rpScanfReceiver:
         self.lscan = rospy.Subscriber("/scan", LaserScan, self.callback)
         rospy.Subscriber("/lidar_pub", lidar_msg, self.lidar_callback)
         self.pc_pub = rospy.Publisher("/pcl", PointCloud, queue_size=5)
-
+ 
     def callback(self, data):
         min_angle = data.angle_min
         min_range = data.range_min
