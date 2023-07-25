@@ -9,11 +9,16 @@ from geometry_msgs.msg import Point32
 from std_msgs.msg import Float64
 from webot_examples.msg import lidar_msg
 
+import math
+
 # ------------------------ 전역변수 ------------------------
 # 좌우 ROI Parameter
 parameter = 1
 # 앞뒤 ROI Parameter
 roi_parameter = 0
+
+# 영점
+origin = (0, 0)
 
 # ------------------------ class ------------------------
 class rpScanfReceiver:
@@ -59,12 +64,45 @@ def is_data(_x, _y):
     global parameter
     global roi_parameter
 
-    if [_x, _y] == [0, 0]:
+    if (_x, _y) == (0, 0):
         return False
-    if  -2 <= _x <= 0 + roi_parameter and -0.75 * parameter <= _y <= 0.75:
+    if  calc_distance(origin, (_x, _y)) <= 2 and -100 <= calc_angle(origin, (_x, _y)) <= 100:
         return True
 
     return False
+
+# ------------------------ test ------------------------
+def calc_distance(point1, point2):
+    x1, y1 = point1
+    x2, y2 = point2
+
+    # Calculate the differences in x and y coordinates
+    dx = x2 - x1
+    dy = y2 - y1
+
+    # Calculate the distance using the Pythagorean theorem
+    distance = math.sqrt(dx**2 + dy**2)
+
+    return distance
+
+def calc_angle(point1, point2):
+    x1, y1 = point1
+    x2, y2 = point2
+
+    # Calculate the differences in x and y coordinates
+    dx = x2 - x1
+    dy = y2 - y1
+
+    # Calculate the angle in radians using the arctan2 function
+    angle_rad = math.atan2(dy, dx)
+
+    # Convert the angle from radians to degrees
+    angle_deg = math.degrees(angle_rad)
+
+    # Ensure the angle is in the range [0, 360)
+    angle_deg = (angle_deg + 360) % 360
+
+    return angle_deg
 
 # ------------------------ run ------------------------
 def run():
