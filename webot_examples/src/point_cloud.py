@@ -66,7 +66,7 @@ def is_data(_x, _y):
 
     if (_x, _y) == (0, 0):
         return False
-    if  calc_distance(origin, (_x, _y)) <= 2 and -100 <= calc_angle(origin, (_x, _y)) <= 100:
+    if  calc_distance(origin, (_x, _y)) <= 2 and (-100 <= calc_angle(origin, (_x, _y)) <= 100):
         return True
 
     return False
@@ -89,6 +89,9 @@ def calc_angle(point1, point2):
     x1, y1 = point1
     x2, y2 = point2
 
+    # Lidar X-axis transformation
+    x1, x2 = -x1, -x2
+
     # Calculate the differences in x and y coordinates
     dx = x2 - x1
     dy = y2 - y1
@@ -98,9 +101,6 @@ def calc_angle(point1, point2):
 
     # Convert the angle from radians to degrees
     angle_deg = math.degrees(angle_rad)
-
-    # Ensure the angle is in the range [0, 360)
-    angle_deg = (angle_deg + 360) % 360
 
     return angle_deg
 
