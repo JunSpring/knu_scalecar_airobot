@@ -9,10 +9,13 @@ from obstacle_avoidance.msg import avoid_angle
 import math
 import numpy as np
 
+import matplotlib.pyplot as plt
+
 # ------------------- Global Variables -------------------
 angle_range = None
 gamma = None
 d_max = None
+sigma_param = None
 
 w_robot = 0.20
 theta_goal = 0.0
@@ -26,20 +29,27 @@ class ObstacleAvoidance:
     def __init__(self) -> None:
         rospy.loginfo("Obstacle Avoidance is Created")
 
+        self.fig, self.ax = plt.subplots()
+        self.ln, = plt.plot([], [], 'ro')
+        self.x_data, self.y_data = [] , []
+        self.x_data = list(range(-100, 101))
+
         # Param
         global angle_range
         global d_max
         global gamma
+        global sigma_param
         
         angle_range = rospy.get_param("angle_range", 100)
         d_max = rospy.get_param("d_max", 2.0)
         gamma = rospy.get_param("gamma", 0.1)
+        sigma_param = rospy.get_param("sigma_param", 50.0)
 
         # Publisher
         self.pub = rospy.Publisher("/avoid_angle", avoid_angle, queue_size=10)
 
         # Subscriber
-        rospy.Subscriber("/raw_obstacle", Obstacles, self.Obstacles_callback)
+        rospy.Subscriber("/raw_obstacles", Obstacles, self.Obstacles_callback)
         
         # ros가 실행되는 동안 publish_data 함수 반복실행
         while not rospy.is_shutdown():
@@ -64,15 +74,30 @@ class ObstacleAvoidance:
         # publish
         self.pub.publish(publishing_data)
 
-        rospy.loginfo("publish min angle : %f", min_angle)
+        # rospy.loginfo("publish min angle : %f", min_angle)
 
     def find_min_f_totoal(self):
+        global angle_range
+
         f_total = []
 
         for angle in range(-1*angle_range, angle_range+1):
-            f_total.append(self.calc_f_total(angle))
+            temp = self.calc_f_total(angle)
+            rospy.loginfo("%d : \t%f", angle, temp)
+            f_total.append(temp)
 
-        return min(f_total)
+        # 201개의 인덱스를 생성 (-100부터 100까지)
+        x_values = list(range(-angle_range, angle_range+1))
+
+        # 그래프 그리기
+        plt.plot(x_values, f_total, label="Data")
+        plt.xlabel("angle in")
+        plt.ylabel("Potential Field")
+        plt.title("ODG-PF")
+        plt.legend()
+        plt.grid(True)
+
+        return f_total.index(min(f_total))-100
 
     def calc_f_total(self, theta_i):
         f_rep = self.calc_f_rep(theta_i)
@@ -114,14 +139,15 @@ class ObstacleAvoidance:
         global d_max
 
         tilde_d_k = d_max - d_k
-        A_k =tilde_d_k * np.exp(0.5)
+        A_k = tilde_d_k * np.exp(0.5)
 
-        return A_k
+        return A_k 
     
     def calc_sigma_k(self, radius, d_k):
         global w_robot
+        global sigma_param
 
-        return math.atan2(radius+w_robot/2, d_k)
+        return sigma_param * math.atan2(radius+w_robot/2, d_k)
 
     def calc_f_att(self, theta_i):
         global gamma
@@ -129,7 +155,7 @@ class ObstacleAvoidance:
 
         return gamma * abs(theta_goal - theta_i)
 
-    def calc_distance(point1, point2):
+    def calc_distance(self, point1, point2):
         x1, y1 = point1
         x2, y2 = point2
 
@@ -142,7 +168,7 @@ class ObstacleAvoidance:
 
         return distance
 
-    def calc_angle(point1, point2):
+    def calc_angle(self, point1, point2):
         x1, y1 = point1
         x2, y2 = point2
 
@@ -164,8 +190,9 @@ class ObstacleAvoidance:
 # ------------------------- run --------------------------
 def run():
     rospy.init_node("obstacle_avoidance")
-    new_class = ObstacleAvoidance()
-    rospy.spin()
+    oa = ObstacleAvoidance()
+    plt.show(block=True)
+    # rospy.spin()
 
 # ----------------------- __name__ ----------------------
 if __name__=='__main__':
