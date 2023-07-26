@@ -6,35 +6,38 @@ import rospy
 from obstacle_detector.msg import Obstacles
 from obstacle_avoidance.msg import avoid_angle
 
-import math
-import numpy as np
+import math         # 수학 계산을 위해 import
+import numpy as np  # exp 사용을 위해 import
 
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt # 그래프 그리기 위해 import
 
 # ------------------- Global Variables -------------------
-angle_range = None
-gamma = None
-d_max = None
-sigma_param = None
+# launch file params
+angle_range = None  # 라이다 인지 및 제어 각도 범위
+gamma = None        # 감마 파라미터
+d_max = None        # 라이다 인지 최대거리
+sigma_param = None  # 시그마 파라미터
 
-w_robot = 0.20
-theta_goal = 0.0
+w_robot = 0.20      # 차체 폭
+theta_goal = 0.0    # 목표 각도
 
-circles = None
-min_angle = 0.0
-origin = (0, 0)
+circles = None      # circles 객체
+min_angle = 0.0     # 최종 제어 각도
+origin = (0, 0)     # 원점
 
 # ------------------------ class -------------------------
 class ObstacleAvoidance:
-    def __init__(self) -> None:
+    def __init__(self):
+        # loginfo (객체 생성 출력)
         rospy.loginfo("Obstacle Avoidance is Created")
 
+        # 그래프 그리기
         self.fig, self.ax = plt.subplots()
         self.ln, = plt.plot([], [], 'ro')
         self.x_data, self.y_data = [] , []
-        self.x_data = list(range(-100, 101))
+        self.x_data = list(range(-angle_range, angle_range+1))
 
-        # Param
+        # Load Param
         global angle_range
         global d_max
         global gamma
@@ -55,6 +58,7 @@ class ObstacleAvoidance:
         while not rospy.is_shutdown():
             self.publish_data()
 
+    # Obstacels Callback Function
     def Obstacles_callback(self, data):
         # Global Variables
         global circles
@@ -62,9 +66,12 @@ class ObstacleAvoidance:
 
         circles = data.circles
 
+        # 최종 제어 각도 구하기
         min_angle = self.find_min_f_totoal()
 
+    # Publish Data Function
     def publish_data(self):
+        # Global Variable
         global min_angle
 
         # publish data 대입
@@ -74,17 +81,25 @@ class ObstacleAvoidance:
         # publish
         self.pub.publish(publishing_data)
 
+        # # loginfo (publish 및 최종 제어 각도 출력)
         # rospy.loginfo("publish min angle : %f", min_angle)
 
+    # f_total 함수에서 최솟값을 갖는 각도를 리턴하는 함수
     def find_min_f_totoal(self):
+        # Global Variable
         global angle_range
 
+        # -100도에서 100도까지의 Potential Field를 저장할 리스트
         f_total = []
 
+        # 각 각도별로 calc_f_total의 값을 리스트에 저장
         for angle in range(-1*angle_range, angle_range+1):
-            temp = self.calc_f_total(angle)
-            rospy.loginfo("%d : \t%f", angle, temp)
-            f_total.append(temp)
+            value = self.calc_f_total(angle)
+
+            # loginfo (angle에 대한 value 출력)
+            rospy.loginfo("%d : \t%f", angle, value)
+
+            f_total.append(value)
 
         # 201개의 인덱스를 생성 (-100부터 100까지)
         x_values = list(range(-angle_range, angle_range+1))
@@ -97,8 +112,10 @@ class ObstacleAvoidance:
         plt.legend()
         plt.grid(True)
 
-        return f_total.index(min(f_total))-100
+        # 최솟값을 가지는 인덱스(angle)를 리턴
+        return f_total.index(min(f_total))-angle_range
 
+    # Calculate f_total
     def calc_f_total(self, theta_i):
         f_rep = self.calc_f_rep(theta_i)
         f_att = self.calc_f_att(theta_i)
@@ -106,7 +123,9 @@ class ObstacleAvoidance:
 
         return f_total
 
+    # Calculate f_rep
     def calc_f_rep(self, theta_i):
+        # Global Variable
         global circles
 
         f_rep = 0
@@ -119,23 +138,30 @@ class ObstacleAvoidance:
 
         return f_rep
 
+    # Calculate theta_k
     def calc_theta_k(self, point):
+        # Global Variable
         global origin
 
         return self.calc_angle(origin, (point.x, point.y))
 
+    # Caculate d_k
     def calc_d_k(self, point):
+        # Global Variable
         global origin
 
         return self.calc_distance(origin, (point.x, point.y))
 
+    # Calculate f_k
     def calc_f_k(self, theta_i, theta_k, d_k, radius):
         A_k = self.calc_A_k(d_k)
         sigma_k = self.calc_sigma_k(radius, d_k)
 
         return A_k * np.exp(-1*((theta_k-theta_i)**2)/(2*(sigma_k**2)))
 
+    # Calculate A_k
     def calc_A_k(self, d_k):
+        # Global Variable
         global d_max
 
         tilde_d_k = d_max - d_k
@@ -143,18 +169,27 @@ class ObstacleAvoidance:
 
         return A_k 
     
+    # Calculate sigma_k
     def calc_sigma_k(self, radius, d_k):
+        # Global Variables
         global w_robot
         global sigma_param
 
+        """
+        논문의 공식대로 시그마를 대입하면 가우시안 분포가 좁게 분포됨
+        넓게 분포되도록 sigma_param을 설정함
+        """
         return sigma_param * math.atan2(radius+w_robot/2, d_k)
 
+    # Calculate f_att
     def calc_f_att(self, theta_i):
+        # Global Variables
         global gamma
         global theta_goal
 
         return gamma * abs(theta_goal - theta_i)
 
+    # Calculate Distance
     def calc_distance(self, point1, point2):
         x1, y1 = point1
         x2, y2 = point2
@@ -168,6 +203,7 @@ class ObstacleAvoidance:
 
         return distance
 
+    # Calculate Angle
     def calc_angle(self, point1, point2):
         x1, y1 = point1
         x2, y2 = point2
