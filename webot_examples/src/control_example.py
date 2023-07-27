@@ -8,6 +8,10 @@ from lane_detection.msg import detected_msg
 from std_msgs.msg import Int32
 from webot_examples.msg import lidar_msg
 
+# -------------------------------------------------------------------------------
+from obstacle_avoidance.msg import avoid_angle
+# -------------------------------------------------------------------------------
+
 class Controller:
     lane=1  #-1 = 1차선, 1 = 2차선
     misson=0
@@ -15,6 +19,11 @@ class Controller:
     def __init__(self):
         rospy.Subscriber("/lane_pub", detected_msg, self.lane_callback)
         rospy.Subscriber("/lidar_pub", lidar_msg, self.missonNum)
+
+        # -------------------------------------------------------------------------------
+        rospy.Subscriber("/avoid_angle", avoid_angle, self.avoid_angle_callback)
+        # -------------------------------------------------------------------------------
+
         self.lane_pub=rospy.Publisher('/whatLane',Int32,queue_size=1)
         self.drive_pub = rospy.Publisher("high_level/ackermann_cmd_mux/input/nav_0", AckermannDriveStamped, queue_size=1)
         self.driveInfo=AckermannDriveStamped()
@@ -24,6 +33,7 @@ class Controller:
         self.laneWaypoint_y = 0.0
         self.coneWaypoint_x = 0.0
         self.coneWaypoint_y = 0.0
+        self.avoid_angle = 0.0
     
     def missonNum(self, msg):   #미션 번호 받기
         self.misson=msg.state   #미션 번호
@@ -33,6 +43,11 @@ class Controller:
     def lane_callback(self, msg):   #차선 주행 콜백
         self.laneWaypoint_x = msg.xdetected #웨이포인트 x좌표
         self.laneWaypoint_y = msg.ydetected #웨이포인트 y좌표
+
+    # -------------------------------------------------------------------------------
+    def avoid_angle_callback(self, msg):
+        self.avoid_angle = msg.angle
+    # -------------------------------------------------------------------------------
 
     def publish_data(self): #전체 퍼블리싱
         str = f"speed : {self.driveInfo.drive.speed}\tangle : {self.driveInfo.drive.steering_angle}"
@@ -66,6 +81,11 @@ class Controller:
         except:
             angle = 0.0
 
+        # -------------------------------------------------------------------------------
+        if self.misson == 3:
+            angle = self.avoid_angle
+        # -------------------------------------------------------------------------------
+
         '''테스트용 각도'''
         # angle = 0.0
         # (2.5 - abs(angle) / 0.34 / angle_parameter * 2.5) #조향각 연동 속도
@@ -78,9 +98,13 @@ class Controller:
             speed = limitedSpeed
         elif self.misson == 2:  #동적장애물
             speed = 0.0
+        
+        # -------------------------------------------------------------------------------
         elif self.misson == 3:  #라바콘 회피주행
-            angle = angle * 0.9
+            angle = angle * 1.0 #0.9
             speed = usualSpeed * 0.6    #일반 속도의 60%
+        # -------------------------------------------------------------------------------
+
         elif self.misson == 4:  #정적장애물
             self.doSnake()
             speed = usualSpeed
