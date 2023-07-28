@@ -5,10 +5,7 @@
 import rospy
 from obstacle_detector.msg import Obstacles
 from obstacle_avoidance.msg import avoid_angle
-
-# -------------------------------------------------------------------------------
 from webot_examples.msg import lidar_msg
-# -------------------------------------------------------------------------------
 
 import math         # 수학 계산을 위해 import
 import numpy as np  # exp 사용을 위해 import
@@ -57,10 +54,7 @@ class ObstacleAvoidance:
 
         # Subscriber
         rospy.Subscriber("/raw_obstacles", Obstacles, self.Obstacles_callback)
-
-        # -------------------------------------------------------------------------------
-        rospy.Subscriber("/lidar_pub", lidar_msg, self.lidar_pub_callback)
-        # -------------------------------------------------------------------------------
+        # rospy.Subscriber("/lidar_pub", lidar_msg, self.lidar_pub_callback)
         
         # ros가 실행되는 동안 publish_data 함수 반복실행
         while not rospy.is_shutdown():
@@ -77,18 +71,15 @@ class ObstacleAvoidance:
         # 최종 제어 각도 구하기
         min_angle = self.find_min_f_totoal()
 
-    # -------------------------------------------------------------------------------
-    def lidar_pub_callback(self, msg):
-        global theta_goal
-        global origin
+    # # LiDAR Pub Callback Function
+    # def lidar_pub_callback(self, msg):
+    #     global theta_goal
+    #     global origin
 
-        coneWaypoint_x = msg.xwaypoint #라바콘 웨이포인트 x좌표
-        coneWaypoint_y = msg.ywaypoint #라바콘 웨이포인트 y좌표
+    #     coneWaypoint_x = msg.xwaypoint #라바콘 웨이포인트 x좌표
+    #     coneWaypoint_y = msg.ywaypoint #라바콘 웨이포인트 y좌표
 
-        theta_goal = self.calc_angle(origin, (coneWaypoint_x, coneWaypoint_y))
-
-        # rospy.loginfo("theta_goal : %f", theta_goal)
-    # -------------------------------------------------------------------------------
+    #     theta_goal = self.calc_angle(origin, (coneWaypoint_x, coneWaypoint_y))
 
     # Publish Data Function
     def publish_data(self):
