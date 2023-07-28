@@ -66,7 +66,7 @@ def is_data(_x, _y):
 
     if (_x, _y) == (0, 0):
         return False
-    if  calc_distance(origin, (_x, _y)) <= 2 and -100 <= calc_angle(origin, (_x, _y)) <= 100:
+    if  calc_distance(origin, (_x, _y)) <= 1 and -100 <= calc_angle(origin, (_x, _y)) <= 100:
         return True
 
     return False

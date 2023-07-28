@@ -9,7 +9,7 @@ from obstacle_avoidance.msg import avoid_angle
 import math         # 수학 계산을 위해 import
 import numpy as np  # exp 사용을 위해 import
 
-import matplotlib.pyplot as plt # 그래프 그리기 위해 import
+# import matplotlib.pyplot as plt # 그래프 그리기 위해 import
 
 # ------------------- Global Variables -------------------
 # launch file params
@@ -31,12 +31,6 @@ class ObstacleAvoidance:
         # loginfo (객체 생성 출력)
         rospy.loginfo("Obstacle Avoidance is Created")
 
-        # 그래프 그리기
-        self.fig, self.ax = plt.subplots()
-        self.ln, = plt.plot([], [], 'ro')
-        self.x_data, self.y_data = [] , []
-        self.x_data = list(range(-angle_range, angle_range+1))
-
         # Load Param
         global angle_range
         global d_max
@@ -48,7 +42,13 @@ class ObstacleAvoidance:
         gamma = rospy.get_param("gamma", 0.1)
         sigma_param = rospy.get_param("sigma_param", 50.0)
 
-        # Publisher
+        # # 그래프 그리기
+        # self.fig, self.ax = plt.subplots()
+        # self.ln, = plt.plot([], [], 'ro')
+        # self.x_data, self.y_data = [] , []
+        # self.x_data = list(range(-angle_range, angle_range+1))
+
+        # # Publisher
         self.pub = rospy.Publisher("/avoid_angle", avoid_angle, queue_size=10)
 
         # Subscriber
@@ -97,20 +97,20 @@ class ObstacleAvoidance:
             value = self.calc_f_total(angle)
 
             # loginfo (angle에 대한 value 출력)
-            rospy.loginfo("%d : \t%f", angle, value)
+            # rospy.loginfo("%d : \t%f", angle, value)
 
             f_total.append(value)
 
-        # 201개의 인덱스를 생성 (-100부터 100까지)
-        x_values = list(range(-angle_range, angle_range+1))
+        # # 201개의 인덱스를 생성 (-100부터 100까지)
+        # x_values = list(range(-angle_range, angle_range+1))
 
-        # 그래프 그리기
-        plt.plot(x_values, f_total, label="Data")
-        plt.xlabel("angle in")
-        plt.ylabel("Potential Field")
-        plt.title("ODG-PF")
-        plt.legend()
-        plt.grid(True)
+        # # 그래프 그리기
+        # plt.plot(x_values, f_total, label="Data")
+        # plt.xlabel("angle in")
+        # plt.ylabel("Potential Field")
+        # plt.title("ODG-PF")
+        # plt.legend()
+        # plt.grid(True)
 
         # 최솟값을 가지는 인덱스(angle)를 리턴
         return f_total.index(min(f_total))-angle_range
@@ -179,7 +179,7 @@ class ObstacleAvoidance:
         논문의 공식대로 시그마를 대입하면 가우시안 분포가 좁게 분포됨
         넓게 분포되도록 sigma_param을 설정함
         """
-        return sigma_param * math.atan2(radius+w_robot/2, d_k)
+        return sigma_param * math.atan2(radius+w_robot, d_k)
 
     # Calculate f_att
     def calc_f_att(self, theta_i):
@@ -227,8 +227,8 @@ class ObstacleAvoidance:
 def run():
     rospy.init_node("obstacle_avoidance")
     oa = ObstacleAvoidance()
-    plt.show(block=True)
-    # rospy.spin()
+    # plt.show(block=True)
+    rospy.spin()
 
 # ----------------------- __name__ ----------------------
 if __name__=='__main__':
