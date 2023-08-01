@@ -57,9 +57,9 @@ class Controller:
         self.lane_pub.publish(self.lane)        #차로 정보 퍼블리싱
         
     def timer_callback(self, _event):
-        if self.coneWaypoint_x == 0 and self.coneWaypoint_y == 0:# and self.laneWaypoint_x == 0 and self.laneWaypoint_y == 0:
-            self.stop() #아무것도 검출이 되지 않으면 정지
-            return
+        # if self.coneWaypoint_x == 0 and self.coneWaypoint_y == 0:# and self.laneWaypoint_x == 0 and self.laneWaypoint_y == 0:
+        #     self.stop() #아무것도 검출이 되지 않으면 정지
+        #     return
 
         self.follow_lane()  #그렇지 않으면 주행
 
