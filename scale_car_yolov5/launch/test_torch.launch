@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<launch>
-	<node name="scale_car_yolov5" pkg="scale_car_yolov5" type="ros_detect.py" output="screen">
-		<param name="img_topic" value="/usb_cam/image_raw/compressed" />
-		<param name="weights" value="/$(find scale_car_yolov5)/src/yolov5/runs/train/scale_car_train_result3/weights/best.pt" />
-		<param name="data" value="$(find scale_car_yolov5)/src/yolov5/data/scale_car.yaml" />
-		<param name="device" value="cpu" />
-	</node>
-</launch>
